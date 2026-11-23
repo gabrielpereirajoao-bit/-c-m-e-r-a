@@ -1,0 +1,147 @@
+let video;
+let filtro = 'normal';
+let adesivos = [];
+let listaEmojis = ['🕶️', '👑', '🔥', '⭐', '🐱', '⚡', '🌈', '💖'];
+let indiceEmoji = 0;
+
+let contagem = 0;
+let contando = false;
+let ultimoSegundo = 0;
+let flash = 0;
+
+function setup() {
+  let cnv = createCanvas(640, 480);
+  // Só coloca adesivo se clicar dentro da tela da câmera
+  cnv.mousePressed(adicionarAdesivo);
+
+  video = createCapture(VIDEO);
+  video.size(640, 480);
+  video.hide();
+
+  // Linha 1: Botões de filtros
+  criarBotao('Normal', () => filtro = 'normal');
+  criarBotao('Invertido', () => filtro = 'invertido');
+  criarBotao('Arco-Íris', () => filtro = 'arcoiris');
+  criarBotao('Preto & Branco', () => filtro = 'pb');
+  criarBotao('Desenho', () => filtro = 'desenho');
+  criarBotao('Visão Noturna', () => filtro = 'noturna');
+
+  createElement('br');
+
+  // Linha 2: Adesivos, Timer e Foto
+  let btnEmoji = criarBotao('Adesivo: ' + listaEmojis[0], () => {
+    indiceEmoji = (indiceEmoji + 1) % listaEmojis.length;
+    btnEmoji.html('Adesivo: ' + listaEmojis[indiceEmoji]);
+  });
+
+  criarBotao('🧹 Limpar Adesivos', () => adesivos = []);
+  criarBotao('⏱️ Timer 3s', iniciarTimer);
+  criarBotao('📸 Tirar Foto', tirarFoto);
+}
+
+function criarBotao(texto, acao) {
+  let btn = createButton(texto);
+  btn.style('margin', '4px');
+  btn.style('padding', '6px 12px');
+  btn.style('cursor', 'pointer');
+  btn.mousePressed(acao);
+  return btn;
+}
+
+function draw() {
+  background(0);
+
+  // Espelha a câmera para parecer um espelho real
+  push();
+  translate(width, 0);
+  scale(-1, 1);
+
+  if (filtro === 'arcoiris') {
+    let r = 127 + 127 * sin(frameCount * 0.05);
+    let g = 127 + 127 * sin(frameCount * 0.05 + 2);
+    let b = 127 + 127 * sin(frameCount * 0.05 + 4);
+    tint(r, g, b);
+  } else if (filtro === 'noturna') {
+    tint(50, 255, 80);
+  } else {
+    noTint();
+  }
+
+  image(video, 0, 0, width, height);
+  pop();
+
+  // Aplica filtros extras
+  if (filtro === 'invertido') {
+    filter(INVERT);
+  } else if (filtro === 'pb') {
+    filter(GRAY);
+  } else if (filtro === 'desenho') {
+    filter(POSTERIZE, 4);
+  }
+
+  // Desenha os adesivos colocados na tela
+  textAlign(CENTER, CENTER);
+  textSize(54);
+  for (let a of adesivos) {
+    text(a.emoji, a.x, a.y);
+  }
+
+  // Moldura simples na borda
+  noFill();
+  stroke(255, 255, 255, 180);
+  strokeWeight(8);
+  rect(0, 0, width, height);
+  noStroke();
+
+  // Contagem regressiva do Timer
+  if (contando) {
+    if (millis() - ultimoSegundo >= 1000) {
+      contagem--;
+      ultimoSegundo = millis();
+      if (contagem <= 0) {
+        contando = false;
+        tirarFoto();
+      }
+    }
+
+    if (contando) {
+      fill(255, 230, 0);
+      stroke(0);
+      strokeWeight(6);
+      textSize(110);
+      text(contagem, width / 2, height / 2);
+      noStroke();
+    }
+  }
+
+  // Efeito de flash ao bater a foto
+  if (flash > 0) {
+    fill(255, flash);
+    rect(0, 0, width, height);
+    flash -= 25;
+  }
+}
+
+function adicionarAdesivo() {
+  adesivos.push({
+    x: mouseX,
+    y: mouseY,
+    emoji: listaEmojis[indiceEmoji]
+  });
+}
+
+function iniciarTimer() {
+  contagem = 3;
+  contando = true;
+  ultimoSegundo = millis();
+}
+
+function tirarFoto() {
+  saveCanvas('minha-foto-' + filtro, 'png');
+  flash = 255;
+}
+
+function keyPressed() {
+  if (key === ' ') tirarFoto();
+  if (key === 'c' || key === 'C') adesivos = [];
+}
